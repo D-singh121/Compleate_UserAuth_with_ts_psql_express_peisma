@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 import { execSync } from "child_process";
 import userRoutes from "./routes/user.routes";
 import errorHandler from "./middlewares/errorHandler";
+import cookieParser from "cookie-parser";
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 // Function to apply Prisma migrations automatically
 const applyMigrations = async () => {

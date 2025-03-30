@@ -78,6 +78,12 @@ const loginUser = asyncHandler(async (req: Request, res: Response) => {
 
 // User Logout
 const logOutUser = asyncHandler(async (req: Request, res: Response) => {
+  const token = req.cookies?.token; // Get token from cookies
+
+  if (!token) {
+    return handleResponse(res, 400, "No user is currently logged in");
+  }
+
   res.clearCookie("token", { httpOnly: true, path: "/" });
   handleResponse(res, 200, "Logout successful");
 });

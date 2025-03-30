@@ -1,4 +1,5 @@
 import { Router } from "express";
+import authMiddleware from "../middlewares/authMiddleware";
 import {
   registerUser,
   loginUser,
@@ -20,9 +21,9 @@ router.get("/user/logout", logOutUser);
 router.post("/user/forgot-password", forgotPassword);
 router.post("/user/reset-password/:token", resetPassword);
 
-router.get("/users", getAllUsers);
-router.get("/user/:id", getUserById);
-router.put("/user/:id", updateUser);
-router.delete("/user/:id", deleteUser);
+router.get("/users", authMiddleware, getAllUsers);
+router.get("/user/:id", authMiddleware, getUserById);
+router.put("/user/:id", authMiddleware, updateUser);
+router.delete("/user/:id", authMiddleware, deleteUser);
 
 export default router;
