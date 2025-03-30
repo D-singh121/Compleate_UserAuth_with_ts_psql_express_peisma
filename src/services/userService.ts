@@ -42,9 +42,10 @@ const getUserByEmailService = async (email: string): Promise<User | null> => {
       id: true,
       name: true,
       email: true,
+      password: true,
       createdAt: true,
       updatedAt: true,
-    }, // Exclude password
+    },
   });
 };
 
@@ -67,6 +68,23 @@ const updateUserService = async (
   id: string,
   data: Partial<User>
 ): Promise<User> => {
+  // Check if email is being updated
+  if (data.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    // If the email exists and belongs to a different user, return an error
+    if (existingUser && existingUser.id !== id) {
+      throw Object.assign(
+        new Error("Email is already in use by another user."),
+        {
+          statusCode: 400,
+        }
+      );
+    }
+  }
+
   return await prisma.user.update({
     where: { id },
     data: { ...data, updatedAt: new Date() },
@@ -81,16 +99,16 @@ const updateUserService = async (
 };
 
 // Delete a user
-const deleteUserService = async (id: string): Promise<User> => {
+const deleteUserService = async (id: string): Promise<User | null> => {
+  // Check if the user exists before deleting
+  const existingUser = await prisma.user.findUnique({ where: { id } });
+
+  if (!existingUser) {
+    return null; // User not found
+  }
+
   return await prisma.user.delete({
     where: { id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      updatedAt: true,
-    }, // Exclude password
   });
 };
 
