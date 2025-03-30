@@ -121,3 +121,5 @@ export {
   updateUserService,
   deleteUserService,
 };
+
+export default prisma;

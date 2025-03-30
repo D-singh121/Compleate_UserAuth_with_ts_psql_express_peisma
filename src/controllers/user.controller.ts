@@ -12,6 +12,9 @@ import {
   deleteUserService,
 } from "../services/userService";
 
+import nodemailer from "nodemailer";
+import prisma from "../services/userService";
+
 // User Registration
 const registerUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -123,6 +126,105 @@ const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   handleResponse(res, 200, "User deleted successfully");
 });
 
+// Forgot Password
+const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email?.trim()) {
+    throw Object.assign(new Error("Email is required."), { statusCode: 400 });
+  }
+
+  // Validate Email Format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw Object.assign(new Error("Invalid email format"), {
+      statusCode: 400,
+    });
+  }
+
+  // Check if user exists
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw Object.assign(
+      new Error("Email is not register please go for sign-up ! ."),
+      { statusCode: 404 }
+    );
+  }
+
+  // Generate Reset Token (Valid for 15 mins)
+  const resetToken = jwt.sign({ email }, process.env.JWT_SECRET!, {
+    expiresIn: "15m",
+  });
+
+  // Save Token in Database
+  await prisma.user.update({
+    where: { email },
+    data: { resetToken },
+  });
+
+  // Send Email (Nodemailer)
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const resetUrl: string = `http://localhost:8000/api/v1/user/reset-password/${resetToken}`;
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: "Reset Password",
+    text: `Click this link to reset your password: ${resetUrl}`,
+  });
+
+  return handleResponse(res, 200, "Password reset link sent to email!");
+});
+
+// Reset Password
+const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params || req.query; // Get token from request body
+  const { newPassword } = req.body;
+
+  if (!token || !newPassword?.trim()) {
+    throw Object.assign(new Error("Token and new password are required."), {
+      statusCode: 400,
+    });
+  }
+
+  // Verify Token
+  let decoded: { email: string };
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET!) as { email: string };
+  } catch (error) {
+    throw Object.assign(new Error("Invalid or expired token."), {
+      statusCode: 400,
+    });
+  }
+
+  // Find user
+  const user = await prisma.user.findUnique({
+    where: { email: decoded.email },
+  });
+
+  if (!user || user.resetToken !== token) {
+    throw Object.assign(new Error("Invalid or expired token."), {
+      statusCode: 400,
+    });
+  }
+
+  // Hash new password
+  const hashedPassword: string = bcrypt.hashSync(newPassword, 10);
+
+  // Update user password & remove token
+  await prisma.user.update({
+    where: { email: user.email },
+    data: { password: hashedPassword, resetToken: null },
+  });
+
+  return handleResponse(res, 200, "Password reset successfully!");
+});
+
 export {
   registerUser,
   loginUser,
@@ -131,4 +233,6 @@ export {
   getUserById,
   updateUser,
   deleteUser,
+  forgotPassword,
+  resetPassword,
 };
