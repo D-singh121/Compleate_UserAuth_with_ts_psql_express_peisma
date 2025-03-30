@@ -1,0 +1,7 @@
+DATABASE_URL="postgresql://username:password@localhost:5432/your-database-name?schema=public"
+PORT=8000 // application port 
+JWT_SECRET=strong-seret-key
+EMAIL_USER=admin-user-email
+EMAIL_PASS=your-email-password
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
